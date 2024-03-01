@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Загрузите изображение для распознавания</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#upload-form').submit(function(e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                $.ajax({
+                    url: '/upload',
+                    type: 'POST',
+                    data: formData,
+                    success: function(data) {
+                        if (data.recognized_text) {
+                            $('#recognized-text').text(data.recognized_text);
+                            $('#image-preview').attr('src', URL.createObjectURL($('#file-input')[0].files[0]));
+                            $('#image-preview').show();
+                        } else {
+                            $('#recognized-text').text('Произошла ошибка.');
+                        }
+                    },
+                    cache: false,
+                    contentType: false,
+                    processData: false
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="upload-section">
+            <h1>Загрузите изображение для распознавания</h1>
+            <form id="upload-form" enctype="multipart/form-data">
+                <input type="file" name="file" id="file-input" required>
+                <input type="submit" value="Загрузить">
+            </form>
+        </div>
+        <div class="result-section">
+            <img id="image-preview" alt="Image preview...">
+            <h2>Распознанный текст:</h2>
+            <p id="recognized-text"></p>
+        </div>
+    </div>
+</body>
+</html>
