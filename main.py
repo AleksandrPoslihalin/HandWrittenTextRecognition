@@ -118,7 +118,7 @@ def clear_folder(folder):
         shutil.rmtree(folder)
     os.makedirs(folder)
 
-def text_segment_and_recogn(image):
+def text_segment_and_recogn(image, pen_color, paper_type):
     # Очистка и создание папки для сохранения изображений предобработки
     save_folder = 'processed_images'
     clear_folder(save_folder)
@@ -133,12 +133,26 @@ def text_segment_and_recogn(image):
         new_h = int(new_w / ar)
         img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-    def thresholding(image):
+    def thresholding(image, color_of_pen, type_of_paper):
+        if paper_type == "В клетку":
+            if pen_color == "Черный":
+                thresh = 175
+            elif pen_color == "Темно-синий":
+                thresh = 120
+            elif pen_color == "Светло-синий":
+                thresh = 170
+        elif paper_type == "Без разметки":
+            if pen_color == "Черный":
+                thresh = 130
+            elif pen_color == "Темно-синий":
+                thresh = 145
+            elif pen_color == "Светло-синий":
+                thresh = 190
         img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(img_gray, 120, 255, cv2.THRESH_BINARY_INV)
+        _, thresh = cv2.threshold(img_gray, thresh, 255, cv2.THRESH_BINARY_INV)
         return thresh
 
-    thresh_img = thresholding(img)
+    thresh_img = thresholding(img, pen_color, paper_type)
 
     kernel = np.ones((3, 80), np.uint8)
     dilated = cv2.dilate(thresh_img, kernel, iterations=1)
@@ -210,3 +224,4 @@ def text_segment_and_recogn(image):
     return final_text
 
 #text_segment_and_recogn('TestTexts/MyText2.png')
+text_segment_and_recogn('TestTexts/MyText1.png',"Темно-синий", "В клетку")

@@ -26,6 +26,11 @@ input[type="submit"] {
 input[type="submit"]:hover {
     background-color: #45a049;
 }
+#image-preview {
+    max-width: 50%; /* Максимальная ширина изображения */
+    max-height: 300px; /* Максимальная высота изображения */
+    margin-top: 20px; /* Отступ сверху */
+}
 #recognized-text {
     margin-top: 20px;
     color: #666;

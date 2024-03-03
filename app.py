@@ -30,7 +30,10 @@ def upload_and_recognize():
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
-        recognized_text = text_segment_and_recogn(file_path)
+        # Извлекаем дополнительные параметры
+        pen_color = request.form.get('pen_color')
+        paper_type = request.form.get('paper_type')
+        recognized_text = text_segment_and_recogn(file_path, pen_color, paper_type)
         return jsonify({'recognized_text': recognized_text})
 
 if __name__ == '__main__':

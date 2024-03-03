@@ -7,28 +7,29 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#upload-form').submit(function(e) {
-                e.preventDefault();
-                var formData = new FormData(this);
-                $.ajax({
-                    url: '/upload',
-                    type: 'POST',
-                    data: formData,
-                    success: function(data) {
-                        if (data.recognized_text) {
-                            $('#recognized-text').text(data.recognized_text);
-                            $('#image-preview').attr('src', URL.createObjectURL($('#file-input')[0].files[0]));
-                            $('#image-preview').show();
-                        } else {
-                            $('#recognized-text').text('Произошла ошибка.');
-                        }
-                    },
-                    cache: false,
-                    contentType: false,
-                    processData: false
-                });
-            });
+    $('#upload-form').submit(function(e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+        formData.append('pen_color', $('input[name="pen_color"]:checked').val());
+        formData.append('paper_type', $('input[name="paper_type"]:checked').val());
+        $.ajax({
+            url: '/upload',
+            type: 'POST',
+            data: formData,
+            success: function(data) {
+                if (data.recognized_text) {
+                    $('#recognized-text').text(data.recognized_text).show(); // Показать текст после распознавания
+                    $('#image-preview').attr('src', URL.createObjectURL($('#file-input')[0].files[0])).show(); // Показать превью изображения
+                } else {
+                    $('#recognized-text').text('Произошла ошибка.').show(); // Показать ошибку, если текст не распознан
+                }
+            },
+            cache: false,
+            contentType: false,
+            processData: false
         });
+    });
+});
     </script>
 </head>
 <body>
@@ -40,10 +41,23 @@
                 <input type="submit" value="Загрузить">
             </form>
         </div>
+        <div class="options-section">
+            <div class="pen-color">
+                <h3>Цвет ручки:</h3>
+                <label><input type="radio" name="pen_color" value="Черный" required> Черный</label>
+                <label><input type="radio" name="pen_color" value="Темно-синий" required checked> Темно-синий</label>
+                <label><input type="radio" name="pen_color" value="Светло-синий" required> Светло-синий</label>
+            </div>
+            <div class="paper-type">
+                <h3>Тип бумаги:</h3>
+                <label><input type="radio" name="paper_type" value="В клетку" required> В клетку</label>
+                <label><input type="radio" name="paper_type" value="Без разметки" required checked> Без разметки</label>
+            </div>
+</div>
         <div class="result-section">
-            <img id="image-preview" alt="Image preview...">
+            <img id="image-preview" alt="" style="display: none;"> <!-- Скрытие изображения до загрузки -->
             <h2>Распознанный текст:</h2>
-            <p id="recognized-text"></p>
+            <p id="recognized-text" style="display: none;"></p>
         </div>
     </div>
 </body>
