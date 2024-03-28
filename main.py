@@ -126,13 +126,6 @@ def text_segment_and_recogn(image, pen_color, paper_type):
     img = cv2.imread(image)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    h, w, _ = img.shape
-    if w > 1000:
-        new_w = 1000
-        ar = w / h
-        new_h = int(new_w / ar)
-        img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
     def thresholding(image, color_of_pen, type_of_paper):
         if paper_type == "В клетку":
             if pen_color == "Черный":
@@ -182,24 +175,6 @@ def text_segment_and_recogn(image, pen_color, paper_type):
     dilated_words = cv2.dilate(thresh_img, kernel, iterations=1)
 
     img_with_words = img.copy()
-    for line in sorted_contours_lines:
-        x, y, w, h = cv2.boundingRect(line)
-        roi_line = dilated_words[y:y+h, x:x+w]
-
-        contours, _ = cv2.findContours(roi_line.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        sorted_contour_words = sorted(contours, key=lambda ctr: cv2.boundingRect(ctr)[0])
-
-        for word in sorted_contour_words:
-            if cv2.contourArea(word) < 400:
-                continue
-
-            x2, y2, w2, h2 = cv2.boundingRect(word)
-            cv2.rectangle(img_with_words, (x + x2, y + y2), (x + x2 + w2, y + y2 + h2), (255, 0, 0), 2)
-
-    # Сохранение изображений для слов и строк
-    cv2.imwrite(os.path.join(save_folder, '6.dilated_words_image.png'), dilated_words)
-    cv2.imwrite(os.path.join(save_folder, '7.words_highlighted_image.png'), cv2.cvtColor(img_with_words, cv2.COLOR_RGB2BGR))
-
     recognized_text = []
     for line in sorted_contours_lines:
         line_text = []
@@ -211,17 +186,19 @@ def text_segment_and_recogn(image, pen_color, paper_type):
         for word in sorted_contour_words:
             if cv2.contourArea(word) < 400:
                 continue
+
             x2, y2, w2, h2 = cv2.boundingRect(word)
-            word_img = img[y+y2:y+y2+h2, x+x2:x+x2+w2]
+            cv2.rectangle(img_with_words, (x + x2, y + y2), (x + x2 + w2, y + y2 + h2), (255, 0, 0), 2)
+            word_img = img[y + y2:y + y2 + h2, x + x2:x + x2 + w2]
             predicted_word = word_predict(word_img)
             line_text.append(predicted_word)
-
         recognized_text.append(' '.join(line_text))
         recognized_text.append('\n')
-
+    # Сохранение изображений для слов и строк
+    cv2.imwrite(os.path.join(save_folder, '6.dilated_words_image.png'), dilated_words)
+    cv2.imwrite(os.path.join(save_folder, '7.words_highlighted_image.png'), cv2.cvtColor(img_with_words, cv2.COLOR_RGB2BGR))
     final_text = ''.join(recognized_text)
     print(final_text)
     return final_text
 
-#text_segment_and_recogn('TestTexts/MyText2.png')
-text_segment_and_recogn('TestTexts/MyText1.png',"Темно-синий", "В клетку")
+text_segment_and_recogn('TestTexts/MyText2.png',"Темно-синий", "В клетку")
