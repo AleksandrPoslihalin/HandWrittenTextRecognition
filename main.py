@@ -165,11 +165,6 @@ def text_segment_and_recogn(image, pen_color, paper_type):
     cv2.imwrite(os.path.join(save_folder, '4.dilated_lines_image.png'), dilated)
     cv2.imwrite(os.path.join(save_folder, '5.lines_highlighted_image.png'), cv2.cvtColor(img_with_lines, cv2.COLOR_RGB2BGR))
 
-    lines_segments = []
-    for ctr in sorted_contours_lines:
-        x, y, w, h = cv2.boundingRect(ctr)
-        line_img = img[y:y+h, x:x+w]
-        lines_segments.append(line_img)
 
     kernel = np.ones((3, 15), np.uint8)
     dilated_words = cv2.dilate(thresh_img, kernel, iterations=1)

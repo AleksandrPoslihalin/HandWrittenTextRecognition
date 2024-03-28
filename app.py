@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import os
 from werkzeug.utils import secure_filename
-from main import text_segment_and_recogn  # Замените main на имя вашего скрипта
+from main import text_segment_and_recogn
 
 UPLOAD_FOLDER = 'uploaded_images'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
