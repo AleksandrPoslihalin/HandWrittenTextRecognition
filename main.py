@@ -16,7 +16,7 @@ from keras.callbacks import ModelCheckpoint
 from keras.utils import CustomObjectScope
 import math
 def preprocess(img):
-    def resize_n_rotate(img, shape_to=(64, 800)):
+    def resize_n_rotate(img, shape_to=(64, 400)):
         if img.shape[0] > shape_to[0] or img.shape[1] > shape_to[1]:
             shrink_multiplier = min(math.floor(shape_to[0] / img.shape[0] * 100) / 100,
                                     math.floor(shape_to[1] / img.shape[1] * 100) / 100)
@@ -65,12 +65,17 @@ class CERMetric(tf.keras.metrics.Metric):
         self.counter.assign(0.0)
 
 def CTCLoss(y_true, y_pred):
-    batch_len = tf.cast(tf.shape(y_true)[0], dtype="int64")
-    input_length = tf.cast(tf.shape(y_pred)[1], dtype="int64")
-    label_length = tf.cast(tf.shape(y_true)[1], dtype="int64")
-    input_length = input_length * tf.ones(shape=(batch_len, 1), dtype="int64")
+    """
+    Compute the training-time loss value
+    """
+    batch_len = tf.cast(tf.shape(y_true)[0], dtype="int64") #размер батча
+    input_length = tf.cast(tf.shape(y_pred)[1], dtype="int64") #длины входных данных(предсказания)
+    label_length = tf.cast(tf.shape(y_true)[1], dtype="int64") #длины выходных данных(метки)
+
+    input_length = input_length * tf.ones(shape=(batch_len, 1), dtype="int64") #перевод в тензоры
     label_length = label_length * tf.ones(shape=(batch_len, 1), dtype="int64")
-    loss = K.ctc_batch_cost(y_true, y_pred, input_length, label_length)
+
+    loss = K.ctc_batch_cost(y_true, y_pred, input_length, label_length) #сравнивает предсказание (y_pred) с истинным значением (y_true), учитывая длину каждой последовательности
     return loss
 
 with CustomObjectScope({'CTCLoss': CTCLoss, 'CERMetric': CERMetric}):
@@ -98,7 +103,7 @@ def decode_text(nums):
 def word_predict(img):
 # Преобразование и предобработка изображения
 
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # Применение предобработки к переданному изображению
     preprocessed_img = preprocess(img)
     # Добавление размерностей для модели
@@ -118,34 +123,43 @@ def clear_folder(folder):
         shutil.rmtree(folder)
     os.makedirs(folder)
 
-def text_segment_and_recogn(image, pen_color, paper_type):
+def text_segment_and_recogn(image):
     # Очистка и создание папки для сохранения изображений предобработки
     save_folder = 'processed_images'
     clear_folder(save_folder)
-
-    img = cv2.imread(image)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-    def thresholding(image, color_of_pen, type_of_paper):
-        if paper_type == "В клетку":
-            if pen_color == "Черный":
-                thresh = 175
-            elif pen_color == "Темно-синий":
-                thresh = 120
-            elif pen_color == "Светло-синий":
-                thresh = 170
-        elif paper_type == "Без разметки":
-            if pen_color == "Черный":
-                thresh = 130
-            elif pen_color == "Темно-синий":
-                thresh = 145
-            elif pen_color == "Светло-синий":
-                thresh = 190
-        img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(img_gray, thresh, 255, cv2.THRESH_BINARY_INV)
-        return thresh
-
-    thresh_img = thresholding(img, pen_color, paper_type)
+    colorimg = cv2.imread(image, cv2.IMREAD_COLOR)
+    img = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
+    def bradley_threshold(image):
+        height, width = image.shape
+        S = width // 8
+        s2 = S // 2
+        t = 0.15
+        res = np.zeros_like(image)
+        integral_image = np.zeros((height, width), dtype=np.int64)
+        # Рассчитываем интегральное изображение
+        for i in range(width):
+            sum_ = 0
+            for j in range(height):
+                sum_ += image[j, i]
+                if i == 0:
+                    integral_image[j][i] = sum_
+                else:
+                    integral_image[j][i] = integral_image[j][i - 1] + sum_
+        # Находим границы для локальных областей и бинаризуем
+        for i in range(width):
+            for j in range(height):
+                x1 = max(i - s2, 0)
+                x2 = min(i + s2, width - 1)
+                y1 = max(j - s2, 0)
+                y2 = min(j + s2, height - 1)
+                count = (x2 - x1) * (y2 - y1)
+                sum_ = integral_image[y2][x2] - integral_image[y1][x2] - integral_image[y2][x1] + integral_image[y1][x1]
+                if image[j, i] * count < sum_ * (1.0 - t):
+                    res[j, i] = 255  # Белый цвет для текста
+                else:
+                    res[j, i] = 0  # Черный цвет для фона
+        return res
+    thresh_img = bradley_threshold(img)
 
     kernel = np.ones((3, 80), np.uint8)
     dilated = cv2.dilate(thresh_img, kernel, iterations=1)
@@ -169,7 +183,7 @@ def text_segment_and_recogn(image, pen_color, paper_type):
     kernel = np.ones((3, 15), np.uint8)
     dilated_words = cv2.dilate(thresh_img, kernel, iterations=1)
 
-    img_with_words = img.copy()
+    img_with_words = colorimg .copy()
     recognized_text = []
     for line in sorted_contours_lines:
         line_text = []
@@ -187,13 +201,14 @@ def text_segment_and_recogn(image, pen_color, paper_type):
             word_img = img[y + y2:y + y2 + h2, x + x2:x + x2 + w2]
             predicted_word = word_predict(word_img)
             line_text.append(predicted_word)
-        recognized_text.append(' '.join(line_text))
-        recognized_text.append('\n')
+        if line_text:  # Добавляем строку и перенос только если в ней есть слова
+            recognized_text.append(' '.join(line_text))
+            recognized_text.append('\n')
     # Сохранение изображений для слов и строк
     cv2.imwrite(os.path.join(save_folder, '6.dilated_words_image.png'), dilated_words)
-    cv2.imwrite(os.path.join(save_folder, '7.words_highlighted_image.png'), cv2.cvtColor(img_with_words, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(os.path.join(save_folder, '7.words_highlighted_image.png'), img_with_words)
     final_text = ''.join(recognized_text)
     print(final_text)
     return final_text
 
-text_segment_and_recogn('TestTexts/MyText2.png',"Темно-синий", "В клетку")
+text_segment_and_recogn('TestTexts/SegmentTest18.jpg')

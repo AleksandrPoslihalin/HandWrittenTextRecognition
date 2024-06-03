@@ -2,58 +2,58 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Загрузите изображение для распознавания</title>
+    <title>Распознавание рукописного текста с изображения</title>
     <link rel="stylesheet" type="text/css" href="/static/style.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
         $(document).ready(function() {
-    $('#upload-form').submit(function(e) {
-        e.preventDefault();
-        var formData = new FormData(this);
-        formData.append('pen_color', $('input[name="pen_color"]:checked').val());
-        formData.append('paper_type', $('input[name="paper_type"]:checked').val());
-        $.ajax({
-            url: '/upload',
-            type: 'POST',
-            data: formData,
-            success: function(data) {
-                if (data.recognized_text) {
-                    $('#recognized-text').text(data.recognized_text).show(); // Показать текст после распознавания
-                    $('#image-preview').attr('src', URL.createObjectURL($('#file-input')[0].files[0])).show(); // Показать превью изображения
+            $('#upload-form').submit(function(e) {
+                e.preventDefault();
+                var fileInput = $('#file-input')[0];
+                if (fileInput.files.length > 0) {
+                    var file = fileInput.files[0];
+                    // Проверяем, что файл является изображением
+                    if (['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+                        var formData = new FormData(this);
+
+                        $.ajax({
+                            url: '/upload',
+                            type: 'POST',
+                            data: formData,
+                            success: function(data) {
+                                if (data.recognized_text) {
+                                    var formattedText = data.recognized_text.replace(/\n/g, '<br>');
+                                    $('#recognized-text').html(formattedText).show();
+                                    $('#image-preview').attr('src', URL.createObjectURL(file)).show();
+                                } else {
+                                    $('#recognized-text').text('Произошла ошибка.').show();
+                                }
+                            },
+                            cache: false,
+                            contentType: false,
+                            processData: false
+                        });
+                    } else {
+                        // Показываем сообщение об ошибке
+                        alert('Пожалуйста, выберите файл изображения (JPEG или PNG).');
+                    }
                 } else {
-                    $('#recognized-text').text('Произошла ошибка.').show(); // Показать ошибку, если текст не распознан
+                    alert('Пожалуйста, выберите файл для загрузки.');
                 }
-            },
-            cache: false,
-            contentType: false,
-            processData: false
+            });
         });
-    });
-});
     </script>
 </head>
 <body>
     <div class="container">
         <div class="upload-section">
-            <h1>Загрузите изображение для распознавания</h1>
+            <h1>Распознавание рукописного текста с изображения</h1>
             <form id="upload-form" enctype="multipart/form-data">
                 <input type="file" name="file" id="file-input" required>
                 <input type="submit" value="Загрузить">
             </form>
         </div>
-        <div class="options-section">
-            <div class="pen-color">
-                <h3>Цвет ручки:</h3>
-                <label><input type="radio" name="pen_color" value="Черный" required> Черный</label>
-                <label><input type="radio" name="pen_color" value="Темно-синий" required checked> Темно-синий</label>
-                <label><input type="radio" name="pen_color" value="Светло-синий" required> Светло-синий</label>
-            </div>
-            <div class="paper-type">
-                <h3>Тип бумаги:</h3>
-                <label><input type="radio" name="paper_type" value="В клетку" required> В клетку</label>
-                <label><input type="radio" name="paper_type" value="Без разметки" required checked> Без разметки</label>
-            </div>
-</div>
+
         <div class="result-section">
             <img id="image-preview" alt="" style="display: none;"> <!-- Скрытие изображения до загрузки -->
             <h2>Распознанный текст:</h2>
